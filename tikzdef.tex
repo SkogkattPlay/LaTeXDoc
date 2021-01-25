@@ -1,0 +1,24 @@
+\usepackage{tikz}
+\usetikzlibrary{arrows, shapes, backgrounds}
+
+% objects styles
+\tikzstyle{commit}=[
+    inner sep=1mm, minimum size=4mm, circle,
+    draw=blue!25!black, fill=blue!5, thick]
+\tikzstyle{tree}=[
+    inner sep=1mm, minimum size=6mm, regular polygon, regular polygon sides=3,
+    draw=green!25!black, fill=green!5, thick]
+\tikzstyle{UUID}=[
+    inner sep=1mm, minimum size=4mm, rectangle,
+    draw=gray!25!black, fill=gray!5, thick]
+\tikzstyle{blob}=[UUID]
+\tikzstyle{file}=[UUID]
+\tikzstyle{render}=[UUID]
+\tikzstyle{helper}=[UUID]
+
+% arrows styles
+\tikzstyle{pre}=[<-]
+\tikzstyle{post}=[->]
+
+% backgrounds styles
+\tikzstyle{back_rect}=[line width=2.5mm, join=round, gray!20]

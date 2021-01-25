@@ -1,0 +1,201 @@
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% SECTION node 格式 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{node 对象模型}
+我们在 \ref{fbs::node} 节中提到了 node 如何储存（即 node 的所有入口储存在 %
+\verb|nodes| 文件夹中，而所有的 node 的子组成部分，即各种对象则储存在 %
+\verb|objects| 中。我们必须要解释 node 中三大对象，即提交对象（commit object），
+树对象（tree object）和块对象（blob object）中的具体作用。
+
+\begin{figure}[h]
+\begin{center}
+\begin{tikzpicture}
+    % commits, about master branch
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    \begin{scope}
+        \node[commit] (master@0) {};
+        \node[commit] (master@1) [left of=master@0] {}
+            edge [pre] (master@0);
+        \node[commit] (master@2) [left of=master@1] {}
+            edge [pre] (master@1);
+        \node[commit] (master@3) [left of=master@2] {}
+            edge [pre] (master@2);
+        \node[commit] (master@4) [left of=master@3] {}
+            edge [pre] (master@3);
+        \node[commit] (master@5) [left of=master@4] {}
+            edge [pre] (master@4);
+        % commits, about sub1 branch
+        \node[commit] (sub1@0) [above of=master@2] {}
+            edge [pre, bend left] (master@1)
+            edge [post, bend right] (master@4);
+        % commits, about sub2 branch
+        \node[commit] (sub2@0) [above of=master@0] {}
+            edge [post, bend right] (master@1);
+    \end{scope}
+
+    % tree of commit@0
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    \begin{scope}
+        \node[tree] (obj@tree1) [below of=master@0] {}
+            edge [pre] (master@0);
+        \node[blob] (obj@blob1) [below left of=obj@tree1] {}
+            edge [pre] (obj@tree1);
+        \node[tree] (obj@tree2) [below right of=obj@tree1] {}
+            edge [pre] (obj@tree1);
+        \node[blob] (obj@blob2) [below left of=obj@tree2] {}
+            edge [pre] (obj@tree2);
+        \node[blob] (obj@blob3) [below right of=obj@tree2] {}
+            edge [pre] (obj@tree2);
+    \end{scope}
+
+    % UUID & node_file & etc.
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    \begin{scope}
+        \node[file] (node_file) [right of=sub2@0] {node}
+            edge [post, bend left] (master@0)
+            edge [post] (sub2@0);
+        \node[UUID] (UUID) [above of=node_file] {UUID}
+            edge [post] (node_file);
+        \node[file] (HTML_file) at ([xshift=25mm] node_file.east) {HTML}
+            edge [pre, dashed] (node_file);
+        \node[render] (render) [below of=HTML_file] {render}
+            edge [pre, bend left, dashed] (node_file)
+            edge [pre, bend right] (obj@tree1)
+            edge [post] (HTML_file);
+    \end{scope}
+
+    % helper
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    \begin{scope}
+        \node[helper] (helper) [yshift=-5mm, below of=render, text width=3cm] {
+            \tikz\node[commit]{}; commit object.\par
+            \tikz\node[tree]{}; tree object.\par
+            \tikz\node[blob]{}; blob object.
+        };
+    \end{scope}
+
+    % background
+    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    \begin{pgfonlayer}{background}
+        \filldraw [back_rect]
+        (sub1@0.north -| master@5.west) rectangle (master@0.south -| master@0.east)
+        (obj@tree1.north -| obj@blob1.west) rectangle (obj@blob3.south -| obj@blob3.east);
+    \end{pgfonlayer}
+\end{tikzpicture}
+\end{center}
+\caption{node 对象模型}
+\label{node_obj_mod}
+\end{figure}
+
+而具体的实现方式可以参考样例图 \ref{node_obj_mod}。
+
+正如 \ref{node_obj_mod} 图所指出的一样，我们通过 \verb|UUID| 可以查找到 node %
+文件，它指定了它的文件版本，渲染器（render，比如说 \verb|SudaOJ:MD:1|），和以提
+交对象索引所表示的历史。
+
+提交历史使用提交对象构成的一个有向无环图来进行表示，使用内容来进行哈希，可以有效
+保证了 node 历史，避免无法溯源的情况，也可以更加灵活地完成 node 的快速开发%
+\footnote{这种想法完全借鉴于 git 如何管理项目历史，并经过了多个大型开源项目的开%
+发的检验，比如著名的、以复杂度和高可靠性和高效性所闻名的 Linux 系统，我相信这种
+基于有向无环图的历史抽象模型能够同样作用于本项目。}。
+
+% SUBSECTION 示例 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{示例}
+举一个例子，爱丽丝想要新建一个 node，用来编辑她的关于某道 SudaOJ 上的博弈论题目
+，她使用全局唯一的 \verb|UUID| 生成了一个全新的 node，没有任何历史提交，除了一个
+空文件夹。她遵守着 \verb|SudaOJ:MD:1| 的渲染规则，在空文件夹下新建了一个文件 %
+\verb|index.md|，并进行了相关的编辑：
+
+\begin{lstlisting}
+关于 SudaOJ:1024 题的题解
+===============================================================================
+
+我认为有手就行。
+\end{lstlisting}
+
+她将这次修改分为两次提交（对应地生成了两个提交对象，值得注意的是第一个提交对象没
+有父节点）并上传到了 SudaOJ 的平台上，现在有版本历史有：
+\begin{center}
+    \begin{tikzpicture}
+        \node[commit] (master@0) {};
+        \node[commit] (master@1) [left of=master@0] {}
+            edge [pre] (master@0);
+    \end{tikzpicture}
+\end{center}
+
+鲍勃也注意到了爱丽丝的提交，他为她添加上了关于这道题的链接：
+
+\begin{lstlisting}
+关于 SudaOJ:1024 题的题解
+===============================================================================
+
+[原链接](oj.suda.edu.cn/node?UUID=xxx)
+
+我认为有手就行。
+\end{lstlisting}
+
+鲍勃进行了提交，现在的版本历史为：
+\begin{center}
+    \begin{tikzpicture}
+        \node[commit] (master@0) {};
+        \node[commit] (master@1) [left of=master@0] {}
+            edge [pre] (master@0);
+        \node[commit] (master@2) [left of=master@1] {}
+            edge [pre] (master@1);
+    \end{tikzpicture}
+\end{center}
+
+与此同时，爱丽丝觉得不太礼貌，修改了文档：
+
+\begin{lstlisting}
+关于 SudaOJ:1024 题的题解
+===============================================================================
+
+我认为有手就行（不是瞧不起没有手的残疾人的意思）。
+\end{lstlisting}
+
+目前的版本历史为：
+\begin{center}
+    \begin{tikzpicture}
+        \node[commit] (master@0) {};
+        \node[commit] (master@1) [left of=master@0] {}
+            edge [pre] (master@0);
+        \node[commit] (master@2) [left of=master@1] {}
+            edge [pre] (master@1);
+        \node[commit] (sub2@0) [above of=master@0] {}
+            edge [post, bend right] (master@1);
+    \end{tikzpicture}
+\end{center}
+
+爱丽丝提交上去了之后发现她的 node 提示了多分支警告，爱丽丝知道 node 不应该有多
+个分支，所以她更倾向于将它们进行合并：
+
+\begin{lstlisting}
+关于 SudaOJ:1024 题的题解
+===============================================================================
+
+[原链接](oj.suda.edu.cn/node?UUID=xxx)
+
+我认为有手就行（不是瞧不起没有手的残疾人的意思）。
+\end{lstlisting}
+
+这个提交和之前的提交都不一样，它同时有两个（甚至有时候会有更多个！）父节点。我们
+可以根据这个来进行作图表示当前的版本历史：
+
+\begin{center}
+    \begin{tikzpicture}
+        \node[commit] (master@0) {};
+        \node[commit] (master@1) [left of=master@0] {}
+            edge [pre] (master@0);
+        \node[commit] (master@2) [left of=master@1] {}
+            edge [pre] (master@1);
+        \node[commit] (sub2@0) [above of=master@0] {}
+            edge [post, bend right] (master@1);
+        \node[commit] (all_in_one) [right of=master@0] {}
+            edge [post] (master@0)
+            edge [post, bend right] (sub2@0);
+    \end{tikzpicture}
+\end{center}
+
+
