@@ -11,11 +11,29 @@
 https://github.com/QingdaoU/Judger}，它需要接受以下参数，并返回运行值：
 
 \begin{center}
-\begin{tabular}{ll}
+\begin{tabular}{lp{6cm}}
     \hline
     max\_cpu\_time      & CPU 最大运行时间  \\
-    max\_real\_time     & 最大实际运行时间  \\
+    max\_real\_time     & 最大实际运行时间（受制于 CPU 在运行时会切换进程，故实际运行时间不能等同于程序运行时间）  \\
     max\_memory         & 最大使用内存      \\
+    memory\_limit\_check\_only & 只检查内存而不给内存设限 \\
+    max\_stack          & 最深栈数 \\
+    max\_process\_number &  最大进程数 \\
+    output\_size        & 输出限制 \\
+    \hline
+    exe\_path           & 可执行二进制文件位置 \\
+    input\_path         & 标准输入重定向文件位置          \\
+    output\_path        & 标准输出重定向文件位置          \\
+    error\_path         & 标准错误重定向文件位置            \\
+    \hline
+    args                & 接收命令行参数            \\
+    env                 & 环境                      \\
+    \hline
+    log\_path           & 日记文件位置          \\
+    seccomp\_rule\_name & seccomp 安全规则（沙盒化） \\
+    \hline
+    uid                 & 程序执行 uid          \\
+    gid                 & 程序执行 gid          \\
     \hline
 \end{tabular}
 \end{center}
@@ -28,3 +46,10 @@ Judger 类需要接受参数，调用 JNI 并返回相关的数据。
 \subsubsection{运行原理}
 
 TODO
+
+% SudaOJ 用户 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{SudaOJ 用户}
+包含用户认证等用户系统基本组件。
+
+TODO
+
