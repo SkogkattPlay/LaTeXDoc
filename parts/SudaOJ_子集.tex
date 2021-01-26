@@ -1,0 +1,30 @@
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% SECTION SudaOJ 子集 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{SudaOJ 子集}
+基于前端都是通过 Skogkatt 来实现的，SudaOJ 子集应该实现的是一个可访问的服务。
+
+% SudaOJ Judger %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{SudaOJ Judger}
+我们实现一个用来判题的 Judger\footnote{可以参考 C 语言版本的 Judger - %
+https://github.com/QingdaoU/Judger}，它需要接受以下参数，并返回运行值：
+
+\begin{center}
+\begin{tabular}{ll}
+    \hline
+    max\_cpu\_time      & CPU 最大运行时间  \\
+    max\_real\_time     & 最大实际运行时间  \\
+    max\_memory         & 最大使用内存      \\
+    \hline
+\end{tabular}
+\end{center}
+
+需要注意的是，测量进程运行时间离不开操作系统的支持，而我们需要用 C/C++ 编写基于
+Linux 的接口，并在外面利用 JNI（Java Native Interface）包装为一个 Judger 类。
+
+Judger 类需要接受参数，调用 JNI 并返回相关的数据。
+
+\subsubsection{运行原理}
+
+TODO
