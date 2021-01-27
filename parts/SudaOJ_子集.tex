@@ -7,49 +7,91 @@
 
 % SudaOJ Judger %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsection{SudaOJ Judger}
-我们实现一个用来判题的 Judger\footnote{可以参考 C 语言版本的 Judger - %
-https://github.com/QingdaoU/Judger}，它需要接受以下参数，并返回运行值：
 
+SudaOJ Judger 是 SudaOJ 服务群中用来判题的核心方法，它接收一系列参数，并在参数下
+在 docker 指定的 Linux 环境下运行，并返回相关的结果对象。
+
+\subsubsection{对外接口}
+我们实现一个用来判题的 Judger\footnote{封装一个开源 C 语言版本的 Judger - %
+https://github.com/QingdaoU/Judger}，它需要接受如表 \ref{sudaoj::judger::args} %
+所示的参数，并返回运行结果对象：
+
+\begin{table}[h]
 \begin{center}
 \begin{tabular}{lp{6cm}}
-    \hline
-    max\_cpu\_time      & CPU 最大运行时间  \\
-    max\_real\_time     & 最大实际运行时间（受制于 CPU 在运行时会切换进程，故实际运行时间不能等同于程序运行时间）  \\
-    max\_memory         & 最大使用内存      \\
-    memory\_limit\_check\_only & 只检查内存而不给内存设限 \\
-    max\_stack          & 最深栈数 \\
-    max\_process\_number &  最大进程数 \\
-    output\_size        & 输出限制 \\
-    \hline
-    exe\_path           & 可执行二进制文件位置 \\
-    input\_path         & 标准输入重定向文件位置          \\
-    output\_path        & 标准输出重定向文件位置          \\
-    error\_path         & 标准错误重定向文件位置            \\
-    \hline
-    args                & 接收命令行参数            \\
-    env                 & 环境                      \\
-    \hline
-    log\_path           & 日记文件位置          \\
-    seccomp\_rule\_name & seccomp 安全规则（沙盒化） \\
-    \hline
-    uid                 & 程序执行 uid          \\
-    gid                 & 程序执行 gid          \\
-    \hline
+    \toprule
+    max\_cpu\_time      & CPU 最大运行时间                                  \\
+    max\_real\_time     & 最大实际运行时间（受制于 CPU 在运行时会切换进程%
+                          ，故实际运行时间不能等同于程序运行时间）          \\
+    max\_memory         & 最大使用内存                                      \\
+    memory\_limit\_check\_only & 只检查内存而不给内存设限                   \\
+    max\_stack          & 最深栈数                                          \\
+    max\_process\_number &  最大进程数                                      \\
+    output\_size        & 输出限制                                          \\
+    \midrule
+    exe\_path           & 可执行二进制文件位置                              \\
+    input\_path         & 标准输入重定向文件位置                            \\
+    output\_path        & 标准输出重定向文件位置                            \\
+    error\_path         & 标准错误重定向文件位置                            \\
+    \midrule
+    args                & 接收命令行参数                                    \\
+    env                 & 环境                                              \\
+    \midrule
+    log\_path           & 日记文件位置                                      \\
+    seccomp\_rule\_name & seccomp 安全规则（沙盒化）                        \\
+    \midrule
+    uid                 & 程序执行 uid                                      \\
+    gid                 & 程序执行 gid                                      \\
+    \bottomrule
 \end{tabular}
 \end{center}
+\caption{SudaOJ Judger 接收参数}
+\label{sudaoj::judger::args}
+\end{table}
 
 需要注意的是，测量进程运行时间离不开操作系统的支持，而我们需要用 C/C++ 编写基于
 Linux 的接口，并在外面利用 JNI（Java Native Interface）包装为一个 Judger 类。
 
 Judger 类需要接受参数，调用 JNI 并返回相关的数据。
 
-\subsubsection{运行原理}
+\subsubsection{底层运行原理}
 
-TODO
+本身它是封装了开源 C 语言版本的 Judger，调用 \verb|runner.c| 中的 \verb|run| 函
+数，即：
+\begin{lstlisting}
+run(struct config *_config, struct result *_result)
+\end{lstlisting}
+从而进行运行程序、监控和返回运行结果。
+
+在运行过程中调用 Linux 系统调用 \verb|fork| 分为两个互不干扰的进程，其中一个调用 %
+\verb|child_process| 以在 \verb|_config| 的限制下运行，另外一个则对运行 %
+\verb|child_process| 的进程进行监视，包含在指定时间内中断进程，对子进程的运行结
+果来为 \verb|*_result| 变量赋值，从而实现运行。
 
 % SudaOJ 用户 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\section{SudaOJ 用户}
+\subsection{SudaOJ 用户}
 包含用户认证等用户系统基本组件。
 
-TODO
+对于分布式系统而言，大部分服务是可以离线进行的，但是如果需要获取 SudaOJ 的服务的
+话，就必须要给出指定的令牌，以在特定的权限范围能获得访问、更改 node 的权力。比如
+说如果希望访问 SudaOJ 来运行程序的话，就必须登录 SudaOJ 以要有 SudaOJ 普通权限令
+牌，否则 SudaOJ 有权拒绝运行。
+
+在 \ref{fbs::jiekou} 章中我们知道，Skogkatt 系统中为第三方服务留出了一个接口，我
+们可以在和 \verb|SudaOJ| 上游服务器中认证后保留该令牌。
+
+我们可以使用 JWT 来完成认证系统。综合来说我们有以下步骤：
+\begin{enumerate}
+    \item 得到登录 SudaOJ 的 node，在上面输入用户名和密码，然后把用户名和哈希之后
+        的密码传入给 SudaOJ 的后端，后端返回一个 JWT 令牌，把令牌保存在 Skogkatt %
+        中的 \verb|Skogkatt.ENV.SudaOJ.JWT| 中。
+    \item 访问另外一个需要高权限才能请求的 node，而本地没有这个对象的时候，将 JWT %
+        附带着去请求 SudaOJ 获取，SudaOJ 根据 JWT 令牌从而进行下载。
+\end{enumerate}
+
+值得注意的是，Skogkatt 虽然是分布式系统，但是请求 node 文件、object 文件等却不是由 %
+Skogkatt 自己搜索的，而必须要依赖于手动更新和维护上游位置，换言之这是一种弱联网的
+系统，即所承担的工作更多在本地的开发和更新上游 Skogkatt 库（当然上游 Skogkatt 库
+不只是 SudaOJ 所维护的 Skogkatt 库，还可以从别人的 Skogkatt 库拉取，如果双方都在
+网络中始终保持联系的话）。
 
